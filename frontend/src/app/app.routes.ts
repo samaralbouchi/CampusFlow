@@ -7,6 +7,7 @@ import { Landing } from './pages/landing/landing';
 import { Login } from './pages/login/login';
 import { Profile } from './pages/profile/profile';
 import { Register } from './pages/register/register';
+import { Resources } from './pages/resources/resources';
 import { Subjects } from './pages/subjects/subjects';
 
 export const routes: Routes = [
@@ -20,6 +21,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', component: Home },
       { path: 'subjects', component: Subjects },
+      { path: 'resources', component: Resources },
       { path: 'profile', component: Profile },
       { path: 'admin', component: Admin, canActivate: [adminGuard] },
     ],

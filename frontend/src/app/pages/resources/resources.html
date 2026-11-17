@@ -1,0 +1,134 @@
+<header class="head">
+  <div>
+    <h1>Ressources</h1>
+    <p>Dépose tes cours pour réviser, et partage-les avec les autres si tu veux.</p>
+  </div>
+  <button class="primary" (click)="showForm.set(!showForm())">
+    {{ showForm() ? 'Fermer' : '+ Déposer un document' }}
+  </button>
+</header>
+
+@if (showForm()) {
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row">
+      <div class="field">
+        <label>Titre</label>
+        <input formControlName="title" placeholder="Résumé du chapitre 2" />
+      </div>
+      <div class="field">
+        <label>Matière</label>
+        <input formControlName="subjectName" placeholder="Réseaux" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Description (facultatif)</label>
+      <input formControlName="description" placeholder="Résumé complet avec exemples" />
+    </div>
+
+    <div class="field">
+      <label>Fichier (PDF, Word, PowerPoint, image, texte, 25 Mo max)</label>
+      <input type="file" (change)="onFile($event)"
+             accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.png,.jpg,.jpeg" />
+    </div>
+
+    <label class="check">
+      <input type="checkbox" formControlName="isPublic" />
+      <span>
+        <b>Partager dans l'espace commun</b>
+        <small>Visible par tous les étudiants, sans validation. Sinon, il reste privé.</small>
+      </span>
+    </label>
+
+    <button type="submit" class="primary" [disabled]="form.invalid || !file() || uploading()">
+      {{ uploading() ? 'Envoi...' : 'Déposer' }}
+    </button>
+  </form>
+}
+
+@if (message()) {
+  <p class="ok">{{ message() }}</p>
+}
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+<div class="toolbar">
+  <div class="tabs">
+    <button [class.on]="tab() === 'common'" (click)="setTab('common')">🌍 Espace commun</button>
+    <button [class.on]="tab() === 'mine'" (click)="setTab('mine')">📂 Mes documents</button>
+    <button [class.on]="tab() === 'favorites'" (click)="setTab('favorites')">⭐ Favoris</button>
+  </div>
+
+  @if (subjects().length > 1) {
+    <select [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value)">
+      <option value="">Toutes les matières</option>
+      @for (s of subjects(); track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+  }
+</div>
+
+@if (loading()) {
+  <p>Chargement...</p>
+} @else if (filtered().length === 0) {
+  <div class="empty">
+    <div class="empty-ico">📁</div>
+    <h3>Aucun document ici pour le moment</h3>
+    <p>
+      @if (tab() === 'favorites') { Ajoute des documents à tes favoris avec l'étoile. }
+      @else if (tab() === 'mine') { Dépose ton premier document avec le bouton ci-dessus. }
+      @else { Sois le premier à partager un document avec la communauté. }
+    </p>
+  </div>
+} @else {
+  <div class="grid">
+    @for (r of filtered(); track r.id) {
+      <article class="card item">
+        <div class="top">
+          <span class="file-ico">{{ icon(r) }}</span>
+          <div class="titles">
+            <h3>{{ r.title }}</h3>
+            <small>{{ r.subjectName }} · par {{ r.author.fullName }} · {{ r.createdAt | date: 'dd/MM/yyyy' }}</small>
+          </div>
+          <button class="fav" [class.on]="r.isFavorite" (click)="toggleFavorite(r)"
+                  [title]="r.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'">
+            {{ r.isFavorite ? '★' : '☆' }}
+          </button>
+        </div>
+
+        @if (r.description) {
+          <p class="desc">{{ r.description }}</p>
+        }
+
+        <div class="badges">
+          <span class="badge" [class.public]="r.isPublic">{{ r.isPublic ? '🌍 Partagé' : '🔒 Privé' }}</span>
+          @if (r.status === 'REJECTED') {
+            <span class="badge rejected">Retiré par l'admin</span>
+          }
+          <span class="badge">⬇ {{ r.downloads }}</span>
+        </div>
+
+        @if (r.isPublic) {
+          <div class="rating">
+            @for (n of stars; track n) {
+              <button type="button" class="star" [class.on]="n <= (r.myRating ?? 0)"
+                      [disabled]="!canRate(r)" (click)="rate(r, n)">★</button>
+            }
+            <small>
+              {{ r.ratingCount ? r.ratingAvg + ' / 5 (' + r.ratingCount + ')' : 'Pas encore noté' }}
+            </small>
+          </div>
+        }
+
+        <div class="actions">
+          <button class="primary small" (click)="download(r)">Télécharger</button>
+          @if (r.isPublic && r.author.id !== auth.user()?.id) {
+            <button class="ghost small" (click)="report(r)">🚩 Signaler</button>
+          }
+        </div>
+      </article>
+    }
+  </div>
+}

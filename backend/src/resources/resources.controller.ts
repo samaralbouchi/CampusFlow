@@ -131,7 +131,7 @@ export class ResourcesController {
         filename: (_req, file, cb) =>
           cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`),
       }),
-      limits: { fileSize: 10 * 1024 * 1024 },
+      limits: { fileSize: 25 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         const ok = ALLOWED.includes(extname(file.originalname).toLowerCase());
         cb(ok ? null : new BadRequestException('Type de fichier non autorisé'), ok);
