@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { ResolveReportDto } from './dto/resolve-report.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 
 @ApiTags('admin')
@@ -26,13 +27,15 @@ export class AdminController {
 
   @Get('stats')
   async stats() {
-    const [users, subjects, chapters, suspended] = await Promise.all([
+    const [users, subjects, chapters, suspended, resources, reports] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.subject.count(),
       this.prisma.chapter.count(),
       this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
+      this.prisma.resource.count({ where: { isPublic: true, status: 'APPROVED' } }),
+      this.prisma.report.count({ where: { resolved: false } }),
     ]);
-    return { users, subjects, chapters, suspended };
+    return { users, subjects, chapters, suspended, resources, reports };
   }
 
   @Get('users')
@@ -69,5 +72,51 @@ export class AdminController {
       data: { status: dto.status },
       select: { id: true, fullName: true, email: true, role: true, status: true },
     });
+  }
+
+  @Get('reports')
+  reports() {
+    return this.prisma.report.findMany({
+      where: { resolved: false },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        reason: true,
+        createdAt: true,
+        user: { select: { id: true, fullName: true } },
+        resource: {
+          select: {
+            id: true,
+            title: true,
+            subjectName: true,
+            fileName: true,
+            status: true,
+            author: { select: { id: true, fullName: true } },
+          },
+        },
+      },
+    });
+  }
+
+  @Patch('reports/:id')
+  async resolveReport(@Param('id') id: string, @Body() dto: ResolveReportDto) {
+    const report = await this.prisma.report.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Signalement introuvable');
+
+    if (dto.action === 'REMOVE') {
+      await this.prisma.$transaction([
+        this.prisma.resource.update({
+          where: { id: report.resourceId },
+          data: { status: 'REJECTED' },
+        }),
+        this.prisma.report.updateMany({
+          where: { resourceId: report.resourceId },
+          data: { resolved: true },
+        }),
+      ]);
+    } else {
+      await this.prisma.report.update({ where: { id }, data: { resolved: true } });
+    }
+    return { resolved: true, action: dto.action };
   }
 }

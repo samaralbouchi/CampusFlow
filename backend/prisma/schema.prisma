@@ -120,15 +120,19 @@ model Resource {
   title       String
   description String?
   fileUrl     String
-  status      ModerationStatus @default(PENDING)
+  fileName    String
+  mimeType    String
+  status      ModerationStatus @default(APPROVED)
+  isPublic    Boolean          @default(false)
   downloads   Int              @default(0)
   authorId    String
-  subjectId   String
+  subjectId   String?
+  subjectName String
   chapterId   String?
   createdAt   DateTime         @default(now())
 
   author  User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  subject Subject  @relation(fields: [subjectId], references: [id])
+  subject Subject?  @relation(fields: [subjectId], references: [id])
   chapter Chapter? @relation(fields: [chapterId], references: [id])
 
   ratings   Rating[]
